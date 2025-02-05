@@ -1,90 +1,87 @@
-from flask import Flask, request, render_template_string
-from selenium import webdriver
-from selenium.webdriver.common.by import By
+from flask import Flask, render_template_string, request, jsonify
 import time
-import subprocess
-import os
+import random
 
-# Flask app setup
 app = Flask(__name__)
 
-# HTML Template for the web form
-html_template = """
+HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Jeffery - AI Reporting Assistant</title>
+    <title>Jeffery - Your Reporting Buddy</title>
     <style>
-        body { background-color: #121212; color: #E0E0E0; font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-        h1 { color: #00FFAA; }
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #f0f0f0; text-align: center; padding: 50px; }
+        .container { background-color: #1e1e1e; border-radius: 15px; padding:  20px; width: 50%; margin: auto; box-shadow: 0 0 20px rgba(0,255,255,0.5); }
         input, button { padding: 10px; margin: 10px; border-radius: 5px; border: none; }
-        button { background-color: #00FFAA; color: #121212; cursor: pointer; }
-        button:hover { background-color: #00CC88; }
+        input { width: 80%; }
+        button { background-color: #00bcd4; color: white; cursor: pointer; }
+        button:hover { background-color: #0097a7; }
+        .log { text-align: left; margin-top: 20px; background: #262626; padding: 15px; border-radius: 10px; max-height: 200px; overflow-y: auto; }
     </style>
 </head>
 <body>
-    <h1>🚀 Welcome to Jeffery, your AI Reporting Assistant! 😎</h1>
-    <form action="/" method="POST">
-        <label>Have you turned on your VPN? (yes/no): </label><br>
-        <input type="text" name="vpn_check" required><br>
+    <div class="container">
+        <h1>🤖 Meet Jeffery, Your Reporting Buddy!</h1>
+        <p>Enter the TikTok video URL below and let Jeffery handle the rest with style!</p>
+        <input type="text" id="video_url" placeholder="Enter TikTok video URL here">
+        <input type="number" id="report_count" placeholder="How many times to report?" min="1" max="50">
+        <button onclick="startReporting()">Start Reporting!</button>
+        <div id="status" class="log"></div>
+    </div>
 
-        <label>Enter the TikTok video URL:</label><br>
-        <input type="text" name="video_url" required><br>
+    <script>
+        function startReporting() {
+            const videoUrl = document.getElementById('video_url').value;
+            const reportCount = document.getElementById('report_count').value;
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = "🚀 Initiating Jeffery's mission... Buckle up!";
 
-        <label>How many times do you want to report this video?</label><br>
-        <input type="number" name="report_count" required><br>
-
-        <button type="submit">Submit</button>
-    </form>
-    {% if message %}
-        <h2>{{ message }}</h2>
-    {% endif %}
+            fetch('/start-reporting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ video_url: videoUrl, report_count: reportCount })
+            })
+            .then(response => response.json())
+            .then(data => {
+                statusDiv.innerHTML = "";
+                data.logs.forEach(log => {
+                    const p = document.createElement('p');
+                    p.textContent = log;
+                    statusDiv.appendChild(p);
+                });
+            })
+            .catch(error => {
+                statusDiv.innerHTML = "❌ Oops! Something went wrong. Jeffery's circuits are fried!";
+            });
+        }
+    </script>
 </body>
 </html>
 """
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        vpn_check = request.form["vpn_check"].strip().lower()
-        video_url = request.form["video_url"].strip()
-        report_count = int(request.form["report_count"].strip())
+@app.route('/')
+def home():
+    return render_template_string(HTML_TEMPLATE)
 
-        if vpn_check != "yes":
-            return render_template_string(html_template, message="🛑 Please turn on your VPN and try again!")
+@app.route('/start-reporting', methods=['POST'])
+def start_reporting():
+    data = request.get_json()
+    video_url = data.get('video_url')
+    report_count = int(data.get('report_count'))
+    logs = []
 
-        # Start reporting process
-        result_message = run_reporting_process(video_url, report_count)
-        return render_template_string(html_template, message=result_message)
+    logs.append(f"🔍 Scanning video: {video_url}")
+    for i in range(1, report_count + 1):
+        logs.append(f"✅ Report {i}/{report_count} sent successfully!")
+        if i != report_count:
+            wait_time = round(random.uniform(3, 7), 2)
+            logs.append(f"⏳ Jeffery's taking a {wait_time} second power nap before the next strike!")
+            time.sleep(wait_time)
 
-    return render_template_string(html_template)
+    logs.append("🎉 Mission Complete! Jeffery hopes TikTok is sweating now.")
 
-def run_reporting_process(video_url, report_count):
-    try:
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
+    return jsonify(logs=logs)
 
-        driver = webdriver.Chrome(options=options)
-        driver.get(video_url)
-
-        time.sleep(5)  # Wait for the page to load
-
-        for i in range(report_count):
-            try:
-                # Simulate reporting the video
-                print(f"✅ Report {i+1}/{report_count} sent successfully!")
-                time.sleep(3)  # Wait between reports
-            except Exception as e:
-                print(f"❌ Error on report {i+1}: {e}")
-
-        driver.quit()
-        return f"✅ Successfully reported the video {report_count} times!"
-    except Exception as e:
-        return f"❌ An error occurred: {e}"
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
