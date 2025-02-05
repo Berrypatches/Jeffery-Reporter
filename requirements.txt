@@ -1,4 +1,3 @@
 selenium
 undetected-chromedriver
-xbogus
 flask
