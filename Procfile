@@ -1,2 +1,3 @@
-web: bash -c "npm install && python report.py"
+web: python report.py
+
 
