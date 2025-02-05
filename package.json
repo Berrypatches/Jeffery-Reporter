@@ -1,0 +1,9 @@
+{
+  "name": "jeffery-reporter",
+  "version": "1.0.0",
+  "description": "Jeffery, the AI reporting assistant",
+  "main": "index.js",
+  "dependencies": {
+    "xbogus": "^1.0.2"
+  }
+}
